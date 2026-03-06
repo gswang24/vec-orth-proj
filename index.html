@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>向量正射影互動演示</title>
+
+    <style>
+
+        body {
+
+            font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+
+            background-color: #f0f4f8;
+
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: center;
+
+            padding: 20px;
+
+        }
+
+        .container {
+
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 15px;
+
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+
+            text-align: center;
+
+            max-width: 600px;
+
+            width: 100%;
+
+        }
+
+        h2 {
+
+            color: #333;
+
+            margin-bottom: 10px;
+
+        }
+
+        .canvas-container {
+
+            position: relative;
+
+            margin: 20px auto;
+
+            border: 1px solid #ddd;
+
+            border-radius: 8px;
+
+            background: #fff;
+
+        }
+
+        canvas {
+
+            display: block;
+
+        }
+
+        .controls {
+
+            margin-top: 20px;
+
+            padding: 15px;
+
+            background: #f8f9fa;
+
+            border-radius: 8px;
+
+        }
+
+        input[type=range] {
+
+            width: 100%;
+
+            margin: 10px 0;
+
+            cursor: pointer;
+
+        }
+
+        .info-panel {
+
+            margin-top: 15px;
+
+            font-size: 1.1em;
+
+            line-height: 1.6;
+
+            color: #555;
+
+            text-align: left;
+
+            background: #eef2f5;
+
+            padding: 15px;
+
+            border-radius: 8px;
+
+        }
+
+        .formula {
+
+            font-weight: bold;
+
+            color: #2c3e50;
+
+            font-family: 'Times New Roman', serif;
+
+            font-style: italic;
+
+        }
+
+        .highlight {
+
+            color: #d63031;
+
+            font-weight: bold;
+
+        }
+
+        .note {
+
+            font-size: 0.9em;
+
+            color: #666;
+
+            margin-top: 5px;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+<div class="container">
+
+    <h2>平面向量的正射影演示</h2>
+
+    
+
+    <div class="canvas-container">
+
+        <canvas id="vectorCanvas" width="500" height="300"></canvas>
+
+    </div>
+
+
+
+    <div class="controls">
+
+        <label for="angleSlider">調整夾角 &theta;: <span id="angleDisplay" class="highlight">45°</span></label>
+
+        <input type="range" id="angleSlider" min="0" max="180" value="45">
+
+    </div>
+
+
+
+    <div class="info-panel">
+
+        <div>正射影長度公式： <span class="formula">|p| = |a| × cos(&theta;)</span></div>
+
+        <div style="margin-top: 8px;">當前 cos(&theta;) = <span id="cosValue" class="highlight">0.71</span></div>
+
+        <div id="descText" class="note" style="margin-top: 10px; color: #0984e3;">
+
+            正射影與向量 b 同方向。
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    const canvas = document.getElementById('vectorCanvas');
+
+    const ctx = canvas.getContext('2d');
+
+    const slider = document.getElementById('angleSlider');
+
+    const angleDisplay = document.getElementById('angleDisplay');
+
+    const cosValueDisplay = document.getElementById('cosValue');
+
+    const descText = document.getElementById('descText');
+
+
+
+    // 設定向量參數
+
+    const origin = { x: 250, y: 250 }; // 原點位置
+
+    const lenA = 150; // 向量 a 的長度
+
+    const lenB = 200; // 向量 b 的顯示長度 (示意用)
+
+
+
+    function drawArrow(fromX, fromY, toX, toY, color, label, lineWidth = 2) {
+
+        const headlen = 10; 
+
+        const dx = toX - fromX;
+
+        const dy = toY - fromY;
+
+        const angle = Math.atan2(dy, dx);
+
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(fromX, fromY);
+
+        ctx.lineTo(toX, toY);
+
+        ctx.strokeStyle = color;
+
+        ctx.lineWidth = lineWidth;
+
+        ctx.stroke();
+
+
+
+        // 畫箭頭
+
+        ctx.beginPath();
+
+        ctx.moveTo(toX, toY);
+
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+
+        ctx.lineTo(toX, toY);
+
+        ctx.fillStyle = color;
+
+        ctx.fill();
+
+
+
+        // 標籤
+
+        if (label) {
+
+            ctx.font = "bold 16px Arial";
+
+            ctx.fillStyle = color;
+
+            ctx.fillText(label, toX + 10, toY - 10);
+
+        }
+
+    }
+
+
+
+    function drawDashedLine(fromX, fromY, toX, toY) {
+
+        ctx.beginPath();
+
+        ctx.setLineDash([5, 5]);
+
+        ctx.moveTo(fromX, fromY);
+
+        ctx.lineTo(toX, toY);
+
+        ctx.strokeStyle = '#888';
+
+        ctx.lineWidth = 1;
+
+        ctx.stroke();
+
+        ctx.setLineDash([]); // 重置
+
+    }
+
+
+
+    function drawAngleArc(angleRad) {
+
+        ctx.beginPath();
+
+        ctx.arc(origin.x, origin.y, 30, 0, -angleRad, true); // Canvas Y 軸向下，所以角度為負
+
+        ctx.strokeStyle = '#666';
+
+        ctx.lineWidth = 1;
+
+        ctx.stroke();
+
+        
+
+        ctx.font = "14px Arial";
+
+        ctx.fillStyle = "#666";
+
+        // 文字位置調整
+
+        const midAngle = -angleRad / 2;
+
+        ctx.fillText("θ", origin.x + 40 * Math.cos(midAngle), origin.y + 40 * Math.sin(midAngle));
+
+    }
+
+
+
+    function update() {
+
+        const thetaDeg = parseInt(slider.value);
+
+        const thetaRad = thetaDeg * Math.PI / 180;
+
+        
+
+        // 更新數值顯示
+
+        angleDisplay.textContent = thetaDeg + "°";
+
+        const cosVal = Math.cos(thetaRad);
+
+        cosValueDisplay.textContent = cosVal.toFixed(2);
+
+
+
+        // 更新文字描述
+
+        if (thetaDeg < 90) {
+
+            descText.textContent = "★ 夾角為銳角：正射影與向量 b 「同向」。";
+
+            descText.style.color = "#0984e3";
+
+        } else if (thetaDeg == 90) {
+
+            descText.textContent = "★ 夾角為直角：正射影為「零向量」。";
+
+            descText.style.color = "#333";
+
+        } else {
+
+            descText.textContent = "★ 夾角為鈍角：正射影與向量 b 「反向」。";
+
+            descText.style.color = "#d63031";
+
+        }
+
+
+
+        // 清空畫布
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+
+        // 計算座標 (注意 Canvas Y 軸向下，所以 y 要減去 sin)
+
+        const Ax = origin.x + lenA * Math.cos(thetaRad); // 本來應該是 -angle 但我們要模擬數學坐標系逆時針
+
+        const Ay = origin.y - lenA * Math.sin(thetaRad);
+
+        
+
+        // 正射影長度 (投影在 x 軸上)
+
+        const projLen = lenA * Math.cos(thetaRad);
+
+        const Px = origin.x + projLen;
+
+        const Py = origin.y;
+
+
+
+        // 1. 畫向量 b (基準線) - 向右延伸與向左延伸(為了鈍角)
+
+        ctx.beginPath();
+
+        ctx.moveTo(origin.x - 150, origin.y);
+
+        ctx.lineTo(origin.x + 230, origin.y);
+
+        ctx.strokeStyle = "#e0e0e0"; // 灰色軸線
+
+        ctx.lineWidth = 1;
+
+        ctx.stroke();
+
+        
+
+        // 畫實際的向量 b (藍色)
+
+        drawArrow(origin.x, origin.y, origin.x + lenB, origin.y, "#0984e3", "b");
+
+
+
+        // 2. 畫正射影向量 p (綠色)
+
+        // 如果長度接近 0 (90度)，畫一個點
+
+        if (Math.abs(projLen) < 1) {
+
+            ctx.beginPath();
+
+            ctx.arc(origin.x, origin.y, 4, 0, Math.PI*2);
+
+            ctx.fillStyle = "#00b894";
+
+            ctx.fill();
+
+        } else {
+
+            drawArrow(origin.x, origin.y, Px, Py, "#00b894", "正射影", 4);
+
+        }
+
+
+
+        // 3. 畫垂直投影線 (虛線)
+
+        drawDashedLine(Ax, Ay, Px, Py);
+
+        
+
+        // 畫垂足符號
+
+        if (Math.abs(projLen) > 10) { // 避免擠在一起
+
+            ctx.beginPath();
+
+            const size = 8;
+
+            // 根據投影方向調整垂足符號位置
+
+            const sign = projLen > 0 ? 1 : -1; 
+
+            ctx.moveTo(Px, Py - size);
+
+            ctx.lineTo(Px - size * sign, Py - size);
+
+            ctx.lineTo(Px - size * sign, Py);
+
+            ctx.strokeStyle = "#888";
+
+            ctx.lineWidth = 1;
+
+            ctx.stroke();
+
+        }
+
+
+
+        // 4. 畫向量 a (紅色)
+
+        drawArrow(origin.x, origin.y, Ax, Ay, "#d63031", "a");
+
+
+
+        // 5. 畫角度弧線
+
+        if (thetaDeg > 0) {
+
+            drawAngleArc(thetaRad);
+
+        }
+
+    }
+
+
+
+    // 初始化
+
+    slider.addEventListener('input', update);
+
+    update();
+
+
+
+</script>
+
+
+
+</body>
+
+</html>
